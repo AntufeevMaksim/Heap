@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <unistd.h> 
 
 /* 
  both structures Block_struct and mmap_Block_struct
@@ -37,6 +38,24 @@ static void init()
     //
 }
 
+static void split_block(Block* block, size_t size)
+{
+    const int splitable_size = 8;
+
+    if (block->size >= size + sizeof(Block) + splitable_size)
+    {
+        Block* new_block = (Block*)((char*)(block + 1) + size);
+        new_block->size = block->size - size - sizeof(Block);
+        new_block->is_empty = 1;
+        new_block->next = block->next;
+        new_block->prev = block;
+        
+        block->next = new_block;
+        block->size = size;
+        write(1, "splited\n", 7);
+    }
+}
+
 static void* use_sbrk_alloc(size_t size)
 {
     void* addr = NULL;
@@ -46,6 +65,7 @@ static void* use_sbrk_alloc(size_t size)
     {
         if (curr_block->is_empty && curr_block->size >= size)
         {
+            split_block(curr_block, size);
             curr_block->is_empty = 0;
             addr = (void*) (curr_block + 1);
             break;
@@ -80,6 +100,17 @@ static void* use_sbrk_alloc(size_t size)
 static void use_sbrk_free(void* ptr)
 {
     Block* block = ((Block*) ptr) - 1;
+    if (block->next != NULL && block->next->is_empty)
+    {
+        block->size += sizeof(Block) + block->next->size;
+        block->next = block->next->next;
+    }
+    if (block->prev != NULL && block->prev->is_empty)
+    {
+        block = block->prev;
+        block->size += sizeof(Block) + block->next->size;
+        block->next = block->next->next;        
+    }
     block->is_empty = 1;
 }
 
@@ -117,7 +148,7 @@ void* my_malloc(size_t size)
     {
         ptr = use_mmap_alloc(size);
     }
-    
+    write(1, "allocated\n", 11);
     return ptr;
 }
 
@@ -133,4 +164,5 @@ void my_free(void* ptr)
     {
         use_mmap_free(ptr);
     }
+    write(1, "freed\n", 7);
 }

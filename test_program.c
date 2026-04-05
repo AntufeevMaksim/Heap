@@ -6,6 +6,13 @@
 
 int main(int argc, char** argv)
 {
+    char* big = (char*) my_malloc(100);
+    my_free(big);
+
+    char* small1 = (char*) my_malloc(4);
+    char* small2 = (char*) my_malloc(4);
+
+
     int* a = (int*) my_malloc(sizeof(int));
     *a = 4;
 
@@ -62,6 +69,7 @@ int main(int argc, char** argv)
 
     my_free(big_string);
     free(big_string2);
+
 
     printf("%d", c_stack);
 }
